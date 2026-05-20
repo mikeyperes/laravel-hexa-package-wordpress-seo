@@ -1,0 +1,24 @@
+{
+    "name": "hexawebsystems/laravel-hexa-package-wordpress-seo",
+    "description": "Abstract WordPress SEO orchestration package for scanning installs, inventorying page SEO, provider-driven proposals, and writebacks.",
+    "type": "library",
+    "license": "MIT",
+    "version": "0.1.1",
+    "require": {
+        "php": "^8.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "hexa_package_wordpress_seo\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "hexa_package_wordpress_seo\\Providers\\WordPressSeoServiceProvider"
+            ]
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
