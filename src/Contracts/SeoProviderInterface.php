@@ -8,13 +8,13 @@ interface SeoProviderInterface
 
     public function label(): string;
 
-    public function inspect(array ): array;
+    public function inspect(array $target): array;
 
-    public function supportsFeature(string ): bool;
+    public function supportsFeature(string $feature): bool;
 
-    public function inventoryPages(array , array  = []): array;
+    public function inventoryPages(array $target, array $filters = []): array;
 
-    public function readPage(array , int ): array;
+    public function readPage(array $target, int $pageId): array;
 
-    public function writePage(array , int , array ): array;
+    public function writePage(array $target, int $pageId, array $payload): array;
 }
