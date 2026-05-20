@@ -3,11 +3,12 @@
 namespace hexa_package_wordpress_seo\Services;
 
 use hexa_package_wordpress_seo\Contracts\SeoProviderInterface;
+use Illuminate\Contracts\Foundation\Application;
 use InvalidArgumentException;
 
 class SeoProviderRegistry
 {
-    public function __construct(protected $app)
+    public function __construct(protected Application $app)
     {
     }
 
