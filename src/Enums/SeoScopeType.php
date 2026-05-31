@@ -6,6 +6,7 @@ enum SeoScopeType: string
 {
     case ALL_SERVERS = 'all_servers';
     case SERVER = 'server';
+    case ACCOUNT = 'account';
     case INSTALL = 'install';
     case PAGE = 'page';
 }

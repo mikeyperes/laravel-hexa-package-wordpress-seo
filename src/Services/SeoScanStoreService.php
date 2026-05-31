@@ -81,6 +81,10 @@ class SeoScanStoreService
                 "content_text" => (string) ($page["content_text"] ?? ""),
                 "seo_title" => (string) ($page["seo_title"] ?? ""),
                 "seo_description" => (string) ($page["seo_description"] ?? ""),
+                "featured_image" => (string) ($page["featured_image"] ?? $page["featured_image_url"] ?? ""),
+                "featured_image_url" => (string) ($page["featured_image_url"] ?? $page["featured_image"] ?? ""),
+                "featured_image_alt" => (string) ($page["featured_image_alt"] ?? ""),
+                "featured_image_id" => (int) ($page["featured_image_id"] ?? 0),
             ];
 
             $record = SeoPageRecord::updateOrCreate(
