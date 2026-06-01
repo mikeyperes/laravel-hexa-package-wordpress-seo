@@ -3,7 +3,7 @@
     "description": "Abstract WordPress SEO orchestration package for scanning installs, inventorying page SEO, provider-driven proposals, and writebacks.",
     "type": "library",
     "license": "MIT",
-    "version": "0.1.14",
+    "version": "0.1.16",
     "require": {
         "php": "^8.2"
     },
