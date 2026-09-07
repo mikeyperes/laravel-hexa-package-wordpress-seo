@@ -185,7 +185,7 @@ foreach ($posts as $post) {
     if ($fetchEffectiveFrontend && $effectiveFetchCount < $effectiveFrontendLimit && (string)$post->post_status === "publish" && ($storedSeoTitle === "" || $storedSeoDescription === "")) {
         $permalink=(string) get_permalink($post);
         if ($permalink !== "") {
-            $response=wp_remote_get($permalink, ["timeout"=>$effectiveFrontendTimeout, "redirection"=>3, "sslverify"=>false, "headers"=>["Cache-Control"=>"no-cache"]]);
+            $response=wp_safe_remote_get($permalink, ["timeout"=>$effectiveFrontendTimeout, "redirection"=>3, "sslverify"=>true, "limit_response_size"=>1048576, "headers"=>["Cache-Control"=>"no-cache"]]);
             $effectiveFetchCount++;
             if (!is_wp_error($response)) {
                 $html=(string) wp_remote_retrieve_body($response);
