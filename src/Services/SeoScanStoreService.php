@@ -3,9 +3,11 @@
 namespace hexa_package_wordpress_seo\Services;
 
 use hexa_package_wordpress_seo\Models\SeoActivityLog;
+use hexa_package_wordpress_seo\Models\SeoIndexabilityUrlRecord;
 use hexa_package_wordpress_seo\Models\SeoPageRecord;
 use hexa_package_wordpress_seo\Models\SeoScan;
 use hexa_package_wordpress_seo\Models\SeoScanTarget;
+use Illuminate\Support\Facades\Schema;
 
 class SeoScanStoreService
 {
@@ -27,6 +29,11 @@ class SeoScanStoreService
     public function storeInstallResult(SeoScan $scan, array $siteResult): SeoScanTarget
     {
         $targetPayload = (array) ($siteResult["target"] ?? []);
+        $indexability = is_array($siteResult["indexability"] ?? null) ? (array) $siteResult["indexability"] : [];
+        $meta = (array) ($siteResult["meta"] ?? []);
+        if ($indexability !== []) {
+            $meta["indexability"] = $this->indexabilitySummary($indexability);
+        }
         $target = SeoScanTarget::create([
             "seo_scan_id" => $scan->id,
             "scope_type" => (string) ($siteResult["scope"] ?? "install"),
@@ -42,13 +49,18 @@ class SeoScanStoreService
             "summary" => [
                 "page_count" => count((array) ($siteResult["pages"] ?? [])),
                 "message" => (string) ($siteResult["message"] ?? ""),
+                "indexability_state" => (string) ($indexability["state"] ?? ""),
+                "technical_indexable" => $indexability["technical_indexable"] ?? null,
+                "sitemap_url_count" => (int) ($indexability["proof"]["sitemap_url_count"] ?? 0),
+                "indexability_issue_count" => count((array) ($indexability["issues"] ?? [])),
             ],
-            "meta" => (array) ($siteResult["meta"] ?? []),
+            "meta" => $meta,
             "started_at" => now(),
             "completed_at" => now(),
         ]);
 
         $this->syncPageRecords($target, (array) ($siteResult["pages"] ?? []));
+        $this->syncIndexabilityUrlRecords($target, (array) ($indexability["url_audits"] ?? []));
 
         $this->recordActivity([
             "seo_scan_id" => $scan->id,
@@ -59,6 +71,8 @@ class SeoScanStoreService
                 "site_name" => $target->site_name,
                 "site_url" => $target->site_url,
                 "page_count" => count((array) ($siteResult["pages"] ?? [])),
+                "indexability_state" => (string) ($indexability["state"] ?? ""),
+                "sitemap_url_count" => (int) ($indexability["proof"]["sitemap_url_count"] ?? 0),
             ],
         ]);
 
@@ -128,6 +142,72 @@ class SeoScanStoreService
         }
 
         return $records;
+    }
+
+    public function syncIndexabilityUrlRecords(SeoScanTarget $target, array $audits): array
+    {
+        if (!Schema::hasTable('wordpress_seo_indexability_url_records')) {
+            return [];
+        }
+
+        $records = [];
+        foreach ($audits as $audit) {
+            if (!is_array($audit)) {
+                continue;
+            }
+
+            $url = trim((string) ($audit["url"] ?? ""));
+            if ($url === "") {
+                continue;
+            }
+
+            $payload = $audit;
+            unset($payload["links"]);
+            $record = SeoIndexabilityUrlRecord::updateOrCreate(
+                [
+                    "seo_scan_target_id" => $target->id,
+                    "url_hash" => hash('sha256', $url),
+                ],
+                [
+                    "url" => $url,
+                    "final_url" => (string) ($audit["final_url"] ?? ""),
+                    "status_code" => isset($audit["status_code"]) ? (int) $audit["status_code"] : null,
+                    "from_sitemap" => (bool) ($audit["source"]["sitemap"] ?? false),
+                    "important" => (bool) ($audit["source"]["important"] ?? false),
+                    "robots_allowed" => isset($audit["robots_allowed"]) ? (bool) $audit["robots_allowed"] : null,
+                    "canonical_self" => array_key_exists("canonical_self", $audit) && $audit["canonical_self"] !== null
+                        ? (bool) $audit["canonical_self"]
+                        : null,
+                    "soft_404" => (bool) ($audit["soft_404"] ?? false),
+                    "access_blocked" => (bool) ($audit["blocked"] ?? false),
+                    "indexable" => (bool) ($audit["indexable"] ?? false),
+                    "canonical_url" => (string) ($audit["canonical_url"] ?? ""),
+                    "response_sha256" => (string) ($audit["response_sha256"] ?? ""),
+                    "reasons" => array_values((array) ($audit["reasons"] ?? [])),
+                    "payload" => $payload,
+                    "fetched_at" => $audit["fetched_at"] ?? null,
+                ]
+            );
+
+            $records[] = $record;
+        }
+
+        return $records;
+    }
+
+    protected function indexabilitySummary(array $indexability): array
+    {
+        $summary = $indexability;
+        unset($summary["url_audits"]);
+
+        if (isset($summary["sitemaps"]["urls"])) {
+            unset($summary["sitemaps"]["urls"]);
+        }
+        if (isset($summary["sitemaps"]["manifest"])) {
+            unset($summary["sitemaps"]["manifest"]);
+        }
+
+        return $summary;
     }
 
     public function recordActivity(array $attributes): SeoActivityLog

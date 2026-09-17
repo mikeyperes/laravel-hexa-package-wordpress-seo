@@ -11,6 +11,7 @@ return [
         "seo_score",
         "focus_keyword",
         "internal_links",
+        "site_indexability",
     ],
     "providers" => [
         "rankmath" => RankMathSeoProvider::class,
@@ -46,5 +47,21 @@ return [
     ],
     "url_context" => [
         "max_urls" => 5,
+    ],
+    "indexability" => [
+        "timeout" => 12,
+        "connect_timeout" => 5,
+        "max_redirects" => 8,
+        "concurrency" => 8,
+        "max_body_bytes" => 10 * 1024 * 1024,
+        "max_robots_body_bytes" => 1024 * 1024,
+        "max_sitemap_body_bytes" => 25 * 1024 * 1024,
+        "max_sitemap_documents" => 250,
+        "max_sitemap_depth" => 8,
+        "max_sitemap_urls" => 50000,
+        "allow_cross_host_sitemaps" => false,
+        "sitemap_urls" => [],
+        "important_urls" => [],
+        "http" => [],
     ],
 ];

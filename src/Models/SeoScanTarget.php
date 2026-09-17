@@ -47,6 +47,11 @@ class SeoScanTarget extends Model
         return $this->hasMany(SeoPageRecord::class, 'seo_scan_target_id');
     }
 
+    public function indexabilityUrlRecords(): HasMany
+    {
+        return $this->hasMany(SeoIndexabilityUrlRecord::class, 'seo_scan_target_id');
+    }
+
     public function activityLogs(): HasMany
     {
         return $this->hasMany(SeoActivityLog::class, 'seo_scan_target_id');

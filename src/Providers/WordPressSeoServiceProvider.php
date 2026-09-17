@@ -8,6 +8,9 @@ use hexa_package_wordpress_seo\Services\SeoProposalStoreService;
 use hexa_package_wordpress_seo\Services\SeoProviderRegistry;
 use hexa_package_wordpress_seo\Services\SeoScanStoreService;
 use hexa_package_wordpress_seo\Services\SupplementalUrlContextService;
+use hexa_package_wordpress_seo\Services\Indexability\PublicUrlInspector;
+use hexa_package_wordpress_seo\Services\Indexability\RobotsTxtPolicy;
+use hexa_package_wordpress_seo\Services\Indexability\SitemapManifestBuilder;
 use hexa_package_wordpress_seo\Services\WordPressSeoApplyService;
 use hexa_package_wordpress_seo\Services\WordPressSeoInternalLinkService;
 use hexa_package_wordpress_seo\Services\WordPressSeoBackgroundRunnerService;
@@ -16,6 +19,7 @@ use hexa_package_wordpress_seo\Services\WordPressSeoProposalService;
 use hexa_package_wordpress_seo\Services\WordPressSeoScanProcessorService;
 use hexa_package_wordpress_seo\Services\WordPressSeoScanService;
 use hexa_package_wordpress_seo\Services\WordPressSeoScorePreviewService;
+use hexa_package_wordpress_seo\Services\WordPressSiteIndexabilityService;
 use Illuminate\Support\ServiceProvider;
 
 class WordPressSeoServiceProvider extends ServiceProvider
@@ -31,12 +35,16 @@ class WordPressSeoServiceProvider extends ServiceProvider
         $this->app->singleton(SeoProposalFrameService::class);
         $this->app->singleton(SeoProposalStoreService::class);
         $this->app->singleton(SeoScanStoreService::class);
+        $this->app->singleton(PublicUrlInspector::class);
+        $this->app->singleton(RobotsTxtPolicy::class);
+        $this->app->singleton(SitemapManifestBuilder::class);
         $this->app->singleton(WordPressSeoDiscoveryService::class);
         $this->app->singleton(WordPressSeoScanService::class);
         $this->app->singleton(WordPressSeoApplyService::class);
         $this->app->singleton(WordPressSeoScanProcessorService::class);
         $this->app->singleton(WordPressSeoBackgroundRunnerService::class);
         $this->app->singleton(WordPressSeoScorePreviewService::class);
+        $this->app->singleton(WordPressSiteIndexabilityService::class);
     }
 
     public function boot(): void

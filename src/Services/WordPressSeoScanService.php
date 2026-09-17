@@ -10,6 +10,7 @@ class WordPressSeoScanService
         protected WordPressSeoDiscoveryService $discovery,
         protected SeoProviderRegistry $providers,
         protected SupplementalUrlContextService $urlContext,
+        protected WordPressSiteIndexabilityService $indexability,
     ) {
     }
 
@@ -50,16 +51,26 @@ class WordPressSeoScanService
         $provider = $this->providers->get($providerKey);
         $plugin = $provider->inspect($target);
         $inventory = $provider->inventoryPages($target, $filters);
+        $resolvedFeatures = $features !== []
+            ? array_values($features)
+            : array_values((array) config("wordpress-seo.supported_features", []));
+        $isPageOnlyScan = isset($filters["page_id"]) && (int) $filters["page_id"] > 0;
+        $runIndexability = in_array("site_indexability", $resolvedFeatures, true)
+            && (!$isPageOnlyScan || (bool) ($filters["indexability"]["run_on_page_scan"] ?? false));
+        $indexability = $runIndexability
+            ? $this->indexability->scan($target, array_values($inventory["pages"] ?? []), (array) ($filters["indexability"] ?? []))
+            : null;
 
         return [
-            "success" => (bool) ($inventory["success"] ?? false),
+            "success" => (bool) ($inventory["success"] ?? false) && ($indexability === null || (bool) ($indexability["success"] ?? false)),
             "scope" => "install",
             "target" => $target,
             "provider" => $providerKey,
             "plugin" => $plugin,
-            "features" => $features !== [] ? array_values($features) : array_values((array) config("wordpress-seo.supported_features", [])),
+            "features" => $resolvedFeatures,
             "pages" => array_values($inventory["pages"] ?? []),
-            "message" => (string) ($inventory["message"] ?? $plugin["message"] ?? ""),
+            "indexability" => $indexability,
+            "message" => (string) ($indexability["message"] ?? $inventory["message"] ?? $plugin["message"] ?? ""),
         ];
     }
 

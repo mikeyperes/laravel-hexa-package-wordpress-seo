@@ -1,6 +1,33 @@
 # laravel-hexa-package-wordpress-seo
 Abstract WordPress SEO orchestration package for scanning, inventory, proposals, and provider-driven SEO writebacks.
 
+## Site-level indexability
+
+Default install scans include the `site_indexability` feature. The reusable `WordPressSiteIndexabilityService` freezes and hashes the site's complete nested sitemap manifest, then checks every frozen sitemap URL plus every configured or WordPress-discovered important URL.
+
+```php
+use hexa_package_wordpress_seo\Services\WordPressSiteIndexabilityService;
+
+$report = app(WordPressSiteIndexabilityService::class)->scan(
+    $wordpressTarget,
+    $pageInventory,
+    [
+        'sitemap_urls' => [], // Empty discovers from robots.txt and the active WordPress provider.
+        'important_urls' => ['https://example.com/about/'],
+    ],
+);
+```
+
+The report distinguishes scan completion from technical indexability. It includes:
+
+- WordPress `blog_public`, Rank Math module/global robots state, and sitemap inclusion for every public content type.
+- Public `robots.txt`, redirect history, final HTTPS host, `X-Robots-Tag`, rendered meta robots, and rendered canonicals.
+- Maintenance, password, WAF/challenge, hard-error, and soft-404 evidence.
+- Recursive sitemap documents, a SHA-256 frozen URL manifest, and one URL audit receipt per manifest URL.
+- Important-URL sitemap membership and rendered internal-link orphan detection.
+
+Stored scans keep compact site-level proof on the scan target and, after the package migration is applied, one structured row per audited URL in `wordpress_seo_indexability_url_records`. `technical_indexable=true` means the complete frozen manifest passed these technical checks; it does not claim that Google has already indexed every URL.
+
 ## WHM cached account scopes
 
 Do not rebuild WHM server/domain dropdowns inside WordPress SEO screens. Domain and cPanel-account lookup goes through:
@@ -42,6 +69,10 @@ The package is the source of truth for reusable SEO behavior:
 
 App packages should not duplicate these primitives. App code should supply page/entity context, render controls, and call these package services.
 
+
+## Version 0.1.29
+
+- Added generic site-level indexability scanning, recursive sitemap freezing and hashing, complete sitemap URL inspection, Rank Math/WordPress indexability settings, soft-404 and access-block detection, important-URL orphan detection, and durable per-URL scan records.
 
 ## Version 0.1.25
 
