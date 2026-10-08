@@ -3,6 +3,7 @@
 namespace hexa_package_wordpress_seo\Providers;
 
 use hexa_package_wordpress_seo\Console\ProcessWordPressSeoScanCommand;
+use hexa_package_wordpress_seo\Console\WordPressSeoSiteCommand;
 use hexa_package_wordpress_seo\Services\SeoProposalFrameService;
 use hexa_package_wordpress_seo\Services\SeoProposalStoreService;
 use hexa_package_wordpress_seo\Services\SeoProviderRegistry;
@@ -54,6 +55,7 @@ class WordPressSeoServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 ProcessWordPressSeoScanCommand::class,
+                WordPressSeoSiteCommand::class,
             ]);
         }
     }

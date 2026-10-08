@@ -97,3 +97,19 @@ App packages should not duplicate these primitives. App code should supply page/
 ## Version 0.1.19
 
 - Optimized Rank Math inventory scans so dashboard consumers can load scores and SEO metadata without rendering every post through WordPress content filters.
+
+## Command line
+
+`php artisan wordpress-seo:site <domain> [pages|indexability|links] [--page=<id>]`
+prints JSON for one site, read-only:
+
+- `pages` — every page (all post types and statuses, loaded in batches of
+  `inventory.per_page` until the whole site is read): Rank Math title,
+  description, focus keyword, score, robots, canonical, featured image and alt,
+  and the title/description visitors are actually served (checked for up to
+  `inventory.effective_frontend_limit` published pages; `served_checked` says
+  how many).
+- `indexability` — the site indexability scan (blog visibility, robots.txt,
+  noindex, canonicals, redirects, sitemaps, orphan pages).
+- `links --page=<id>` — internal-link suggestions for one page and its dead
+  links (status 0 or 400+).

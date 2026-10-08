@@ -20,6 +20,7 @@ return [
         "post_types" => ["page", "post", "book", "organization"],
         "statuses" => ["publish", "draft", "future", "private", "pending"],
         "per_page" => 500,
+        "max_batches" => 200,
         "fetch_effective_frontend" => true,
         "effective_frontend_limit" => 80,
         "effective_frontend_timeout" => 4,

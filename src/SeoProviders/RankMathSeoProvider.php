@@ -59,12 +59,58 @@ class RankMathSeoProvider implements SeoProviderInterface
         ], true);
     }
 
+    /**
+     * Load every matching page, one batch of per_page at a time, so large sites are never cut off.
+     * The served-HTML check keeps one shared budget across batches and reports its coverage.
+     */
     public function inventoryPages(array $target, array $filters = []): array
+    {
+        $perPage = max(1, (int) ($filters["per_page"] ?? config("wordpress-seo.inventory.per_page", 500)));
+        $maxBatches = max(1, (int) config("wordpress-seo.inventory.max_batches", 200));
+        $frontendBudget = max(0, (int) ($filters["effective_frontend_limit"] ?? config("wordpress-seo.inventory.effective_frontend_limit", 80)));
+        $pages = [];
+        $total = null;
+        $served = 0;
+
+        for ($batch = 1; $batch <= $maxBatches; $batch++) {
+            $result = $this->inventoryBatch($target, array_merge($filters, [
+                "paged" => $batch,
+                "effective_frontend_limit" => max(0, $frontendBudget - $served),
+            ]));
+            if (!($result["success"] ?? false)) {
+                return $result + ["pages" => $pages];
+            }
+
+            $batchPages = (array) ($result["pages"] ?? []);
+            $pages = array_merge($pages, $batchPages);
+            $total = (int) ($result["total"] ?? count($pages));
+            $served += (int) ($result["served_checked"] ?? 0);
+
+            if (isset($filters["page_id"]) || count($batchPages) < $perPage || count($pages) >= $total) {
+                break;
+            }
+        }
+
+        $complete = $total === null || count($pages) >= $total;
+
+        return [
+            "success" => true,
+            "message" => count($pages) . " of " . ($total ?? count($pages)) . " page(s) loaded.",
+            "pages" => $pages,
+            "total" => $total ?? count($pages),
+            "complete" => $complete,
+            "served_checked" => $served,
+            "served_limit" => $frontendBudget,
+        ];
+    }
+
+    protected function inventoryBatch(array $target, array $filters = []): array
     {
         $postTypes = array_values(array_filter(array_map("strval", (array) ($filters["post_types"] ?? config("wordpress-seo.inventory.post_types", ["page"])))));
         $statuses = array_values(array_filter(array_map("strval", (array) ($filters["statuses"] ?? config("wordpress-seo.inventory.statuses", ["publish"])))));
         $perPage = max(1, (int) ($filters["per_page"] ?? config("wordpress-seo.inventory.per_page", 500)));
         $pageId = isset($filters["page_id"]) ? (int) $filters["page_id"] : 0;
+        $paged = max(1, (int) ($filters["paged"] ?? 1));
         $fetchEffectiveFrontend = (bool) ($filters["fetch_effective_frontend"] ?? config("wordpress-seo.inventory.fetch_effective_frontend", true));
         $effectiveFrontendLimit = max(0, (int) ($filters["effective_frontend_limit"] ?? config("wordpress-seo.inventory.effective_frontend_limit", 80)));
         $effectiveFrontendTimeout = max(1, (int) ($filters["effective_frontend_timeout"] ?? config("wordpress-seo.inventory.effective_frontend_timeout", 4)));
@@ -74,6 +120,7 @@ class RankMathSeoProvider implements SeoProviderInterface
             "\$statuses=" . var_export($statuses, true) . ";",
             "\$perPage=" . var_export($perPage, true) . ";",
             "\$pageId=" . var_export($pageId, true) . ";",
+            "\$paged=" . var_export($paged, true) . ";",
             "\$fetchEffectiveFrontend=" . var_export($fetchEffectiveFrontend, true) . ";",
             "\$effectiveFrontendLimit=" . var_export($effectiveFrontendLimit, true) . ";",
             "\$effectiveFrontendTimeout=" . var_export($effectiveFrontendTimeout, true) . ";",
@@ -92,6 +139,7 @@ $args=[
     "post_type"=>$postTypes,
     "post_status"=>$statuses,
     "posts_per_page"=>$perPage,
+    "paged"=>$paged,
     "orderby"=>["post_parent"=>"ASC","menu_order"=>"ASC","ID"=>"ASC"],
     "suppress_filters"=>false,
 ];
@@ -99,7 +147,9 @@ if ($pageId > 0) {
     $args["post__in"] = [$pageId];
     $args["posts_per_page"] = 1;
 }
-$posts=get_posts($args);
+$query=new WP_Query($args + ["ignore_sticky_posts"=>true, "no_found_rows"=>false]);
+$posts=$query->posts;
+$total=(int) $query->found_posts;
 $pages=[];
 $effectiveFetchCount=0;
 $extractTitle=function($html) use ($decode) {
@@ -182,7 +232,9 @@ foreach ($posts as $post) {
     $effectiveSeoTitle=$storedSeoTitle;
     $effectiveSeoDescription=$storedSeoDescription;
     $effectiveSeoSource=$storedSeoTitle !== "" || $storedSeoDescription !== "" ? "rank_math_post_meta" : "";
-    if ($fetchEffectiveFrontend && $effectiveFetchCount < $effectiveFrontendLimit && (string)$post->post_status === "publish" && ($storedSeoTitle === "" || $storedSeoDescription === "")) {
+    $servedTitle=null;
+    $servedDescription=null;
+    if ($fetchEffectiveFrontend && $effectiveFetchCount < $effectiveFrontendLimit && (string)$post->post_status === "publish") {
         $permalink=(string) get_permalink($post);
         if ($permalink !== "") {
             $response=wp_safe_remote_get($permalink, ["timeout"=>$effectiveFrontendTimeout, "redirection"=>3, "sslverify"=>true, "limit_response_size"=>1048576, "headers"=>["Cache-Control"=>"no-cache"]]);
@@ -191,6 +243,8 @@ foreach ($posts as $post) {
                 $html=(string) wp_remote_retrieve_body($response);
                 $htmlTitle=$extractTitle($html);
                 $htmlDescription=$extractMetaContent($html, "description");
+                $servedTitle=$htmlTitle;
+                $servedDescription=$htmlDescription;
                 if ($storedSeoTitle === "" && $htmlTitle !== "") $effectiveSeoTitle=$htmlTitle;
                 if ($storedSeoDescription === "" && $htmlDescription !== "") $effectiveSeoDescription=$htmlDescription;
                 if ($htmlTitle !== "" || $htmlDescription !== "") $effectiveSeoSource="frontend_html";
@@ -243,9 +297,12 @@ foreach ($posts as $post) {
         "rank_math_focus_keyword"=>$decode((string) get_post_meta($post->ID, "rank_math_focus_keyword", true)),
         "canonical_url"=>$decode((string) get_post_meta($post->ID, "rank_math_canonical_url", true)),
         "robots"=>$decode($robots),
+        "served_title"=>$servedTitle,
+        "served_description"=>$servedDescription,
+        "served_checked"=>$servedTitle !== null,
     ];
 }
-echo "HEXA_RANKMATH_INVENTORY:" . wp_json_encode(["success"=>true,"message"=>count($pages) . " page(s) loaded.","pages"=>$pages]);
+echo "HEXA_RANKMATH_INVENTORY:" . wp_json_encode(["success"=>true,"message"=>count($pages) . " page(s) loaded.","pages"=>$pages,"total"=>$total,"served_checked"=>$effectiveFetchCount]);
 PHP
         ]);
 
