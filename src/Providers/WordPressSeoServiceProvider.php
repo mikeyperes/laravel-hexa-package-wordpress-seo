@@ -46,6 +46,7 @@ class WordPressSeoServiceProvider extends ServiceProvider
         $this->app->singleton(WordPressSeoBackgroundRunnerService::class);
         $this->app->singleton(WordPressSeoScorePreviewService::class);
         $this->app->singleton(WordPressSiteIndexabilityService::class);
+        $this->app->singleton(\hexa_package_wordpress_seo\Services\WordPressImageMetaService::class);
     }
 
     public function boot(): void
@@ -56,6 +57,7 @@ class WordPressSeoServiceProvider extends ServiceProvider
             $this->commands([
                 ProcessWordPressSeoScanCommand::class,
                 WordPressSeoSiteCommand::class,
+                \hexa_package_wordpress_seo\Console\WordPressImageMetaCommand::class,
             ]);
         }
     }

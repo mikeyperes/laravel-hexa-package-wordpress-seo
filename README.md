@@ -113,3 +113,7 @@ prints JSON for one site, read-only:
   noindex, canonicals, redirects, sitemaps, orphan pages).
 - `links --page=<id>` — internal-link suggestions for one page and its dead
   links (status 0 or 400+).
+
+## Image SEO fields
+
+`php artisan wordpress-seo:image <domain> <attachment-id|image-url>` reads one image's alt text, title, caption, description, file name, size and format. Add `--alt= --title= --caption= --description=` to write them through WordPress's own functions, and `--post=<id>` to also refresh that image's alt inside one post's content. Service: `WordPressImageMetaService`.

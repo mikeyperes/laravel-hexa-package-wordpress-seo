@@ -3,7 +3,7 @@
   "description": "Abstract WordPress SEO orchestration package for scanning installs, inventorying page SEO, provider-driven proposals, and writebacks.",
   "type": "library",
   "license": "MIT",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "require": {
     "php": "^8.2",
     "hexawebsystems/laravel-hexa-package-content-extractor": "*",
