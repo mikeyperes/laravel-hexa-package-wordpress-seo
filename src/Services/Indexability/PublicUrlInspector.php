@@ -37,9 +37,16 @@ final class PublicUrlInspector
     {
         $urls = array_values(array_unique(array_filter(array_map('strval', $urls), fn (string $url): bool => $this->isHttpUrl($url))));
         $results = [];
-        $concurrency = max(1, (int) ($options['concurrency'] ?? 8));
+        // CRITICAL — see BUGLOG.md SEO-BUG-001: the scanner runs on the same
+        // server as the sites, so it is throttled: at most 2 requests at a
+        // time and a pause between rounds.
+        $concurrency = max(1, min(2, (int) ($options['concurrency'] ?? 2)));
+        $delayMs = max(250, (int) ($options['delay_ms'] ?? 1000));
 
         foreach (array_chunk($urls, $concurrency) as $chunkIndex => $chunk) {
+            if ($chunkIndex > 0) {
+                usleep($delayMs * 1000);
+            }
             $keys = [];
 
             try {
@@ -171,7 +178,6 @@ final class PublicUrlInspector
     {
         return array_merge([
             'Accept' => 'text/html,application/xhtml+xml,application/xml;q=0.9,text/plain;q=0.8,*/*;q=0.5',
-            'Cache-Control' => 'no-cache',
             'User-Agent' => (string) ($options['user_agent'] ?? 'Mozilla/5.0 (compatible; HWS-IndexabilityScanner/1.0; +https://hexawebsystems.com)'),
         ], (array) ($options['headers'] ?? []));
     }

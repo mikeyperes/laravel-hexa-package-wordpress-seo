@@ -51,7 +51,8 @@ prints JSON for one site, read-only:
   from the served page: `h1` (exactly one H1), `heading_order` (no skipped
   levels inside the main content) and `slug_check` (a WordPress "-2" duplicate,
   underscores, capitals or encoded characters). Code reads the served HTML of up to `inventory.served_limit`
-  published pages, 8 at a time; `served_checked` says how many. A check is
+  published pages (100 by default), at most 2 at a time and 1 second apart,
+  with cached pages allowed; `served_checked` says how many. A check is
   `null` when that page was not read.
 - `indexability` — the site indexability scan (blog visibility, robots.txt,
   noindex, canonicals, redirects, sitemaps, orphan pages).
@@ -62,9 +63,13 @@ prints JSON for one site, read-only:
 
 `php artisan wordpress-seo:image <domain> <attachment-id|image-url>` reads one image's alt text, title, caption, description, file name, size and format. Add `--alt= --title= --caption= --description=` to write them through WordPress's own functions, and `--post=<id>` to also refresh that image's alt inside one post's content. Service: `WordPressImageMetaService`.
 
+## Version 0.4.2
+
+- SEO-BUG-001: the page scanner is throttled to 2 requests at a time, 1 second apart, and no longer bypasses the cache; the `pages` view reads 100 served pages by default.
+
 ## Version 0.4.1
 
-- Served pages are fetched by Code in parallel (8 at a time) instead of one at a time inside the WordPress command, which WP Toolkit stopped after 120 seconds on larger sites; batches are 200 pages.
+- Served pages are fetched by Code instead of one at a time inside the WordPress command, which WP Toolkit stopped after 120 seconds on larger sites; batches are 200 pages.
 - Added the H1, heading-order and slug checks to every `pages` line.
 
 ## Version 0.4.0

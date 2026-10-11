@@ -66,7 +66,7 @@ class RankMathPageService
             }
         }
 
-        $servedLimit = max(0, (int) ($filters["served_limit"] ?? config("wordpress-seo.inventory.served_limit", 1000)));
+        $servedLimit = max(0, (int) ($filters["served_limit"] ?? config("wordpress-seo.inventory.served_limit", 100)));
         [$pages, $served] = $this->attachServedPages($pages, $servedLimit);
 
         return [

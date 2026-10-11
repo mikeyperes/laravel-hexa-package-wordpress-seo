@@ -3,7 +3,7 @@
   "description": "Live SEO view of one WordPress site for HWS skills: Rank Math page fields, indexability, internal links and image fields.",
   "type": "library",
   "license": "MIT",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "require": {
     "php": "^8.2",
     "hexawebsystems/laravel-hexa-package-whm": "*",

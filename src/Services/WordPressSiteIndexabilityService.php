@@ -68,7 +68,8 @@ final class WordPressSiteIndexabilityService
             array_column($importantUrls, 'url')
         )));
         $responses = $this->inspector->inspectMany($auditUrls, array_merge($httpOptions, [
-            "concurrency" => max(1, (int) ($settings['concurrency'] ?? 8)),
+            "concurrency" => (int) ($settings['concurrency'] ?? 2),
+            "delay_ms" => (int) ($settings['delay_ms'] ?? 1000),
         ]));
 
         foreach ($auditUrls as $url) {

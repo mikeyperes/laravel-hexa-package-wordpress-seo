@@ -6,8 +6,9 @@ return [
         "statuses" => ["publish", "draft", "future", "private", "pending"],
         "per_page" => 200,
         "max_batches" => 200,
-        // Published pages whose served HTML is read (title, description, headings).
-        "served_limit" => 1000,
+        // Published pages whose served HTML is read (title, description,
+        // headings). Throttled like every scanner request; raise per run only.
+        "served_limit" => 100,
     ],
     "internal_links" => [
         "max_suggestions" => 8,
@@ -16,7 +17,10 @@ return [
         "timeout" => 12,
         "connect_timeout" => 5,
         "max_redirects" => 8,
-        "concurrency" => 8,
+        // CRITICAL — see BUGLOG.md SEO-BUG-001: at most 2 at a time, 1 s apart,
+        // and cached pages are allowed (no cache bypass).
+        "concurrency" => 2,
+        "delay_ms" => 1000,
         "max_body_bytes" => 10 * 1024 * 1024,
         "max_robots_body_bytes" => 1024 * 1024,
         "max_sitemap_body_bytes" => 25 * 1024 * 1024,
