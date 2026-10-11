@@ -3,7 +3,7 @@
 namespace hexa_package_wordpress_seo\Console;
 
 use hexa_package_wordpress_seo\Services\Indexability\PublicUrlInspector;
-use hexa_package_wordpress_seo\Services\SeoProviderRegistry;
+use hexa_package_wordpress_seo\Services\RankMathPageService;
 use hexa_package_wordpress_seo\Services\WordPressSeoDiscoveryService;
 use hexa_package_wordpress_seo\Services\WordPressSeoInternalLinkService;
 use hexa_package_wordpress_seo\Services\WordPressSiteIndexabilityService;
@@ -24,7 +24,7 @@ class WordPressSeoSiteCommand extends Command
 
     public function handle(
         WordPressSeoDiscoveryService $discovery,
-        SeoProviderRegistry $providers,
+        RankMathPageService $rankMath,
         WordPressSiteIndexabilityService $indexability,
         WordPressSeoInternalLinkService $links,
         PublicUrlInspector $inspector,
@@ -38,8 +38,7 @@ class WordPressSeoSiteCommand extends Command
 
         $view = (string) $this->argument('view');
         $pageId = (int) $this->option('page');
-        $provider = $providers->get((string) config('wordpress-seo.default_provider', 'rankmath'));
-        $inventory = $provider->inventoryPages($target, $pageId > 0 && $view === 'pages' ? ['page_id' => $pageId] : []);
+        $inventory = $rankMath->inventoryPages($target, $pageId > 0 && $view === 'pages' ? ['page_id' => $pageId] : []);
         if (!($inventory['success'] ?? false)) {
             $this->error((string) ($inventory['message'] ?? 'Inventory failed.'));
 

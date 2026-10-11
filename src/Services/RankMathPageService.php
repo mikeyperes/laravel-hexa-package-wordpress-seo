@@ -1,24 +1,17 @@
 <?php
 
-namespace hexa_package_wordpress_seo\SeoProviders;
+namespace hexa_package_wordpress_seo\Services;
 
 use hexa_package_wordpress\Services\WordPressManagerService;
-use hexa_package_wordpress_seo\Contracts\SeoProviderInterface;
 
-class RankMathSeoProvider implements SeoProviderInterface
+/**
+ * Reads every page's Rank Math fields (and the served title and description)
+ * from one WordPress site, and writes one page's Rank Math fields.
+ */
+class RankMathPageService
 {
     public function __construct(protected WordPressManagerService $wp)
     {
-    }
-
-    public function key(): string
-    {
-        return "rankmath";
-    }
-
-    public function label(): string
-    {
-        return "Rank Math";
     }
 
     public function inspect(array $target): array
@@ -31,7 +24,7 @@ class RankMathSeoProvider implements SeoProviderInterface
 
         return [
             "success" => $installed,
-            "provider" => $this->key(),
+            "provider" => "rankmath",
             "installed" => $installed,
             "active" => $active,
             "free" => $free["plugin"] ?? null,
@@ -40,23 +33,6 @@ class RankMathSeoProvider implements SeoProviderInterface
                 ? "Rank Math is not installed."
                 : ($active ? "Rank Math is installed and active." : "Rank Math is installed but inactive."),
         ];
-    }
-
-    public function supportsFeature(string $feature): bool
-    {
-        return in_array($feature, [
-            "seo_title",
-            "seo_description",
-            "effective_seo_title",
-            "effective_seo_description",
-            "seo_title_source",
-            "seo_description_source",
-            "effective_seo_source",
-            "featured_image",
-            "seo_score",
-            "focus_keyword",
-            "internal_links",
-        ], true);
     }
 
     /**
@@ -319,18 +295,6 @@ PHP
         $payload["pages"] = array_values(array_map(fn (array $page) => $this->normalizePagePayload($page), array_filter((array) ($payload["pages"] ?? []), "is_array")));
 
         return $payload;
-    }
-
-    public function readPage(array $target, int $pageId): array
-    {
-        $inventory = $this->inventoryPages($target, ["page_id" => $pageId, "per_page" => 1]);
-        $page = $inventory["pages"][0] ?? null;
-
-        return [
-            "success" => is_array($page),
-            "message" => is_array($page) ? "Page loaded." : "Page not found.",
-            "page" => $page,
-        ];
     }
 
     public function writePage(array $target, int $pageId, array $payload): array
