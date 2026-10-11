@@ -3,6 +3,7 @@
 namespace hexa_package_wordpress_seo\Console;
 
 use hexa_package_wordpress_seo\Services\Indexability\PublicUrlInspector;
+use hexa_package_wordpress_seo\Services\PageStructureCheck;
 use hexa_package_wordpress_seo\Services\RankMathPageService;
 use hexa_package_wordpress_seo\Services\WordPressSeoDiscoveryService;
 use hexa_package_wordpress_seo\Services\WordPressSeoInternalLinkService;
@@ -20,7 +21,7 @@ class WordPressSeoSiteCommand extends Command
         {view=pages : pages|indexability|links}
         {--page= : Page ID (required for links, optional filter for pages)}';
 
-    protected $description = 'Read one WordPress site\'s SEO state: every page (Rank Math fields, featured image, score, served title), the indexability scan, or one page\'s link suggestions and dead links.';
+    protected $description = 'Read one WordPress site\'s SEO state: every page (Rank Math fields, featured image, score, served title, H1, heading order and slug checks), the indexability scan, or one page\'s link suggestions and dead links.';
 
     public function handle(
         WordPressSeoDiscoveryService $discovery,
@@ -28,6 +29,7 @@ class WordPressSeoSiteCommand extends Command
         WordPressSiteIndexabilityService $indexability,
         WordPressSeoInternalLinkService $links,
         PublicUrlInspector $inspector,
+        PageStructureCheck $structure,
     ): int {
         $target = $discovery->resolveInstallTarget((string) $this->argument('domain'));
         if (!$target) {
@@ -45,6 +47,7 @@ class WordPressSeoSiteCommand extends Command
             return self::FAILURE;
         }
         $pages = (array) ($inventory['pages'] ?? []);
+        $slugs = array_values(array_filter(array_map(fn (array $page): string => (string) ($page['slug'] ?? ''), $pages)));
 
         $result = match ($view) {
             'pages' => [
@@ -52,7 +55,7 @@ class WordPressSeoSiteCommand extends Command
                 'total' => $inventory['total'] ?? count($pages),
                 'complete' => $inventory['complete'] ?? true,
                 'served_checked' => $inventory['served_checked'] ?? 0,
-                'pages' => array_map(fn (array $page): array => $this->row($page), $pages),
+                'pages' => array_map(fn (array $page): array => $this->row($page, $structure->check($page, $slugs)), $pages),
             ],
             'indexability' => $indexability->scan($target, $pages),
             'links' => $this->links($pages, $pageId, $links, $inspector),
@@ -71,7 +74,7 @@ class WordPressSeoSiteCommand extends Command
     }
 
     /** @return array<string, mixed> */
-    private function row(array $page): array
+    private function row(array $page, array $structure): array
     {
         $served = (bool) ($page['served_checked'] ?? false);
 
@@ -91,6 +94,10 @@ class WordPressSeoSiteCommand extends Command
             'canonical' => $page['canonical_url'] ?? '',
             'served_title' => $served ? ($page['served_title'] ?? '') : null,
             'served_description' => $served ? ($page['served_description'] ?? '') : null,
+            'h1' => $structure['h1'],
+            'heading_order' => $structure['heading_order'],
+            'slug' => $page['slug'] ?? null,
+            'slug_check' => $structure['slug'],
         ];
     }
 

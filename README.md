@@ -6,7 +6,8 @@ Every call reads the site directly; nothing is stored.
 ## Services
 
 - `WordPressSeoDiscoveryService::resolveInstallTarget($domain)`: the exact WP Toolkit installation for a domain (also `searchCachedDomains` and `resolveCachedDomain` through the WHM package's cache).
-- `RankMathPageService::inventoryPages($target, $filters)`: every page's Rank Math title, description, focus keyword, score, robots, canonical, featured image and the title and description visitors are served, read in batches until the whole site is loaded. `writePage($target, $postId, [...])` writes one page's Rank Math title and description; `inspect($target)` reports the Rank Math plugins.
+- `RankMathPageService::inventoryPages($target, $filters)`: every page's Rank Math title, description, focus keyword, score, robots, canonical and featured image, read in batches until the whole site is loaded, plus the served title, description and headings of its published pages, fetched in parallel by Code.
+- `PageStructureCheck::check($page, $siteSlugs)`: the H1, heading-order and slug checks shown on each `pages` line. `writePage($target, $postId, [...])` writes one page's Rank Math title and description; `inspect($target)` reports the Rank Math plugins.
 - `WordPressSiteIndexabilityService::scan($target, $pages)`: the indexability scan below.
 - `WordPressSeoInternalLinkService::analyze($page, $sitePages)`: one page's current internal links and suggestions.
 - `WordPressImageMetaService`: one image's alt text, title, caption, description, file name, size and format.
@@ -46,9 +47,12 @@ prints JSON for one site, read-only:
 - `pages` — every page (all post types and statuses, loaded in batches of
   `inventory.per_page` until the whole site is read): Rank Math title,
   description, focus keyword, score, robots, canonical, featured image and alt,
-  and the title/description visitors are actually served (checked for up to
-  `inventory.effective_frontend_limit` published pages; `served_checked` says
-  how many).
+  the title and description visitors are actually served, and three checks
+  from the served page: `h1` (exactly one H1), `heading_order` (no skipped
+  levels inside the main content) and `slug_check` (a WordPress "-2" duplicate,
+  underscores, capitals or encoded characters). Code reads the served HTML of up to `inventory.served_limit`
+  published pages, 8 at a time; `served_checked` says how many. A check is
+  `null` when that page was not read.
 - `indexability` — the site indexability scan (blog visibility, robots.txt,
   noindex, canonicals, redirects, sitemaps, orphan pages).
 - `links --page=<id>` — internal-link suggestions for one page and its dead
@@ -57,6 +61,11 @@ prints JSON for one site, read-only:
 ## Image SEO fields
 
 `php artisan wordpress-seo:image <domain> <attachment-id|image-url>` reads one image's alt text, title, caption, description, file name, size and format. Add `--alt= --title= --caption= --description=` to write them through WordPress's own functions, and `--post=<id>` to also refresh that image's alt inside one post's content. Service: `WordPressImageMetaService`.
+
+## Version 0.4.1
+
+- Served pages are fetched by Code in parallel (8 at a time) instead of one at a time inside the WordPress command, which WP Toolkit stopped after 120 seconds on larger sites; batches are 200 pages.
+- Added the H1, heading-order and slug checks to every `pages` line.
 
 ## Version 0.4.0
 

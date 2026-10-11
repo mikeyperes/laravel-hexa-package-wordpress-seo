@@ -6,13 +6,14 @@ use PHPUnit\Framework\TestCase;
 
 final class RankMathTlsSecurityTest extends TestCase
 {
-    public function test_frontend_inventory_keeps_tls_certificate_verification_enabled(): void
+    public function test_served_page_fetch_keeps_tls_certificate_verification_enabled(): void
     {
-        $source = (string) file_get_contents(dirname(__DIR__).'/src/Services/RankMathPageService.php');
+        $inspector = (string) file_get_contents(dirname(__DIR__).'/src/Services/Indexability/PublicUrlInspector.php');
+        $pages = (string) file_get_contents(dirname(__DIR__).'/src/Services/RankMathPageService.php');
 
-        self::assertStringContainsString('wp_safe_remote_get', $source);
-        self::assertStringContainsString('"sslverify"=>true', $source);
-        self::assertStringNotContainsString('"sslverify"=>false', $source);
-        self::assertStringContainsString('"limit_response_size"=>1048576', $source);
+        self::assertStringContainsString("'verify' => true", $inspector);
+        self::assertStringNotContainsString("'verify' => false", $inspector);
+        self::assertStringContainsString('$this->inspector->inspectMany(', $pages);
+        self::assertStringNotContainsString('sslverify', $pages);
     }
 }

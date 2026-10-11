@@ -7,6 +7,7 @@ use hexa_package_wordpress_seo\Console\WordPressSeoSiteCommand;
 use hexa_package_wordpress_seo\Services\Indexability\PublicUrlInspector;
 use hexa_package_wordpress_seo\Services\Indexability\RobotsTxtPolicy;
 use hexa_package_wordpress_seo\Services\Indexability\SitemapManifestBuilder;
+use hexa_package_wordpress_seo\Services\PageStructureCheck;
 use hexa_package_wordpress_seo\Services\RankMathPageService;
 use hexa_package_wordpress_seo\Services\WordPressImageMetaService;
 use hexa_package_wordpress_seo\Services\WordPressSeoDiscoveryService;
@@ -23,6 +24,7 @@ class WordPressSeoServiceProvider extends ServiceProvider
         foreach ([
             WordPressSeoDiscoveryService::class,
             RankMathPageService::class,
+            PageStructureCheck::class,
             WordPressSiteIndexabilityService::class,
             PublicUrlInspector::class,
             RobotsTxtPolicy::class,

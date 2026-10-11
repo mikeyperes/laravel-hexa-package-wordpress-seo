@@ -4,11 +4,10 @@ return [
     "inventory" => [
         "post_types" => ["page", "post", "book", "organization"],
         "statuses" => ["publish", "draft", "future", "private", "pending"],
-        "per_page" => 500,
+        "per_page" => 200,
         "max_batches" => 200,
-        "fetch_effective_frontend" => true,
-        "effective_frontend_limit" => 80,
-        "effective_frontend_timeout" => 4,
+        // Published pages whose served HTML is read (title, description, headings).
+        "served_limit" => 1000,
     ],
     "internal_links" => [
         "max_suggestions" => 8,

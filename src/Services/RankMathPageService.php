@@ -3,15 +3,19 @@
 namespace hexa_package_wordpress_seo\Services;
 
 use hexa_package_wordpress\Services\WordPressManagerService;
+use hexa_package_wordpress_seo\Services\Indexability\PublicUrlInspector;
 
 /**
- * Reads every page's Rank Math fields (and the served title and description)
- * from one WordPress site, and writes one page's Rank Math fields.
+ * Reads every page's Rank Math fields from one WordPress site, then the served
+ * title, description and headings of its published pages (fetched by Code in
+ * parallel), and writes one page's Rank Math fields.
  */
 class RankMathPageService
 {
-    public function __construct(protected WordPressManagerService $wp)
-    {
+    public function __construct(
+        protected WordPressManagerService $wp,
+        protected PublicUrlInspector $inspector,
+    ) {
     }
 
     public function inspect(array $target): array
@@ -36,23 +40,19 @@ class RankMathPageService
     }
 
     /**
-     * Load every matching page, one batch of per_page at a time, so large sites are never cut off.
-     * The served-HTML check keeps one shared budget across batches and reports its coverage.
+     * Load every matching page, one batch of per_page at a time, so large sites
+     * are never cut off, then read the served HTML of up to served_limit
+     * published pages in parallel.
      */
     public function inventoryPages(array $target, array $filters = []): array
     {
-        $perPage = max(1, (int) ($filters["per_page"] ?? config("wordpress-seo.inventory.per_page", 500)));
+        $perPage = max(1, (int) ($filters["per_page"] ?? config("wordpress-seo.inventory.per_page", 200)));
         $maxBatches = max(1, (int) config("wordpress-seo.inventory.max_batches", 200));
-        $frontendBudget = max(0, (int) ($filters["effective_frontend_limit"] ?? config("wordpress-seo.inventory.effective_frontend_limit", 80)));
         $pages = [];
         $total = null;
-        $served = 0;
 
         for ($batch = 1; $batch <= $maxBatches; $batch++) {
-            $result = $this->inventoryBatch($target, array_merge($filters, [
-                "paged" => $batch,
-                "effective_frontend_limit" => max(0, $frontendBudget - $served),
-            ]));
+            $result = $this->inventoryBatch($target, array_merge($filters, ["paged" => $batch]));
             if (!($result["success"] ?? false)) {
                 return $result + ["pages" => $pages];
             }
@@ -60,23 +60,121 @@ class RankMathPageService
             $batchPages = (array) ($result["pages"] ?? []);
             $pages = array_merge($pages, $batchPages);
             $total = (int) ($result["total"] ?? count($pages));
-            $served += (int) ($result["served_checked"] ?? 0);
 
             if (isset($filters["page_id"]) || count($batchPages) < $perPage || count($pages) >= $total) {
                 break;
             }
         }
 
-        $complete = $total === null || count($pages) >= $total;
+        $servedLimit = max(0, (int) ($filters["served_limit"] ?? config("wordpress-seo.inventory.served_limit", 1000)));
+        [$pages, $served] = $this->attachServedPages($pages, $servedLimit);
 
         return [
             "success" => true,
             "message" => count($pages) . " of " . ($total ?? count($pages)) . " page(s) loaded.",
             "pages" => $pages,
             "total" => $total ?? count($pages),
-            "complete" => $complete,
+            "complete" => $total === null || count($pages) >= $total,
             "served_checked" => $served,
-            "served_limit" => $frontendBudget,
+            "served_limit" => $servedLimit,
+        ];
+    }
+
+    /**
+     * Fetch the served HTML of published pages (up to $limit) and add the
+     * served title, description and heading outline to each page.
+     *
+     * @return array{0: array<int, array<string, mixed>>, 1: int}
+     */
+    protected function attachServedPages(array $pages, int $limit): array
+    {
+        $urls = [];
+        foreach ($pages as $page) {
+            if (count($urls) >= $limit) {
+                break;
+            }
+            if (($page["status"] ?? "") === "publish" && filled($page["url"] ?? null)) {
+                $urls[] = (string) $page["url"];
+            }
+        }
+
+        // Bodies are read in small chunks and reduced at once, so a large site
+        // never holds every page's HTML in memory.
+        $options = array_merge((array) config("wordpress-seo.indexability", []), ["include_body" => true]);
+        $served = [];
+        foreach (array_chunk($urls, 40) as $chunk) {
+            foreach ($this->inspector->inspectMany($chunk, $options) as $url => $result) {
+                if (($result["success"] ?? false) && (int) ($result["status_code"] ?? 0) === 200) {
+                    $html = (string) ($result["_body"] ?? "");
+                    $served[$url] = [
+                        "title" => (string) ($result["title"] ?? ""),
+                        "description" => $this->metaDescription($html),
+                        "headings" => $this->headings($html),
+                    ];
+                }
+            }
+        }
+
+        foreach ($pages as $index => $page) {
+            $result = $served[(string) ($page["url"] ?? "")] ?? null;
+            $ok = $result !== null;
+            $title = $ok ? $result["title"] : null;
+            $description = $ok ? $result["description"] : null;
+
+            $page["served_title"] = $title;
+            $page["served_description"] = $description;
+            $page["served_checked"] = $ok;
+            $page["served_headings"] = $ok ? $result["headings"] : null;
+            if ($ok && trim((string) ($page["seo_title"] ?? "")) === "" && $title !== "") {
+                $page["effective_seo_title"] = $title;
+                $page["effective_seo_source"] = "frontend_html";
+                $page["seo_title_source"] = "frontend_html";
+            }
+            if ($ok && trim((string) ($page["seo_description"] ?? "")) === "" && $description !== "") {
+                $page["effective_seo_description"] = $description;
+                $page["effective_seo_source"] = "frontend_html";
+                $page["seo_description_source"] = "frontend_html";
+            }
+            $pages[$index] = $page;
+        }
+
+        return [$pages, count($served)];
+    }
+
+    protected function metaDescription(string $html): string
+    {
+        if (preg_match('/<meta\b(?=[^>]*\bname=["\']description["\'])(?=[^>]*\bcontent=["\']([^"\']*)["\'])[^>]*>/is', $html, $match)) {
+            return $this->decodeText(trim($match[1]));
+        }
+
+        return "";
+    }
+
+    /**
+     * Every H1's text on the page, and the heading levels inside the main
+     * content area (main, else article, else the whole page) in page order.
+     *
+     * @return array{h1_count: int, h1: array<int, string>, levels: array<int, int>}
+     */
+    protected function headings(string $html): array
+    {
+        preg_match_all('/<h1\b[^>]*>(.*?)<\/h1>/is', $html, $h1);
+        $texts = array_map(
+            fn (string $text): string => mb_substr(trim($this->decodeText(strip_tags($text))), 0, 120),
+            array_slice($h1[1] ?? [], 0, 5),
+        );
+        $region = $html;
+        if (preg_match('/<main\b[^>]*>(.*?)<\/main>/is', $html, $match)) {
+            $region = $match[1];
+        } elseif (preg_match('/<article\b[^>]*>(.*?)<\/article>/is', $html, $match)) {
+            $region = $match[1];
+        }
+        preg_match_all('/<h([1-6])\b/i', $region, $levels);
+
+        return [
+            "h1_count" => count($h1[1] ?? []),
+            "h1" => $texts,
+            "levels" => array_slice(array_map("intval", $levels[1] ?? []), 0, 200),
         ];
     }
 
@@ -84,12 +182,9 @@ class RankMathPageService
     {
         $postTypes = array_values(array_filter(array_map("strval", (array) ($filters["post_types"] ?? config("wordpress-seo.inventory.post_types", ["page"])))));
         $statuses = array_values(array_filter(array_map("strval", (array) ($filters["statuses"] ?? config("wordpress-seo.inventory.statuses", ["publish"])))));
-        $perPage = max(1, (int) ($filters["per_page"] ?? config("wordpress-seo.inventory.per_page", 500)));
+        $perPage = max(1, (int) ($filters["per_page"] ?? config("wordpress-seo.inventory.per_page", 200)));
         $pageId = isset($filters["page_id"]) ? (int) $filters["page_id"] : 0;
         $paged = max(1, (int) ($filters["paged"] ?? 1));
-        $fetchEffectiveFrontend = (bool) ($filters["fetch_effective_frontend"] ?? config("wordpress-seo.inventory.fetch_effective_frontend", true));
-        $effectiveFrontendLimit = max(0, (int) ($filters["effective_frontend_limit"] ?? config("wordpress-seo.inventory.effective_frontend_limit", 80)));
-        $effectiveFrontendTimeout = max(1, (int) ($filters["effective_frontend_timeout"] ?? config("wordpress-seo.inventory.effective_frontend_timeout", 4)));
 
         $php = implode("", [
             "\$postTypes=" . var_export($postTypes, true) . ";",
@@ -97,9 +192,6 @@ class RankMathPageService
             "\$perPage=" . var_export($perPage, true) . ";",
             "\$pageId=" . var_export($pageId, true) . ";",
             "\$paged=" . var_export($paged, true) . ";",
-            "\$fetchEffectiveFrontend=" . var_export($fetchEffectiveFrontend, true) . ";",
-            "\$effectiveFrontendLimit=" . var_export($effectiveFrontendLimit, true) . ";",
-            "\$effectiveFrontendTimeout=" . var_export($effectiveFrontendTimeout, true) . ";",
             <<<'PHP'
 $decode=function($value){ return html_entity_decode((string) $value, ENT_QUOTES | ENT_HTML5, get_bloginfo("charset") ?: "UTF-8"); };
 $frontId=(int) get_option("page_on_front");
@@ -127,20 +219,6 @@ $query=new WP_Query($args + ["ignore_sticky_posts"=>true, "no_found_rows"=>false
 $posts=$query->posts;
 $total=(int) $query->found_posts;
 $pages=[];
-$effectiveFetchCount=0;
-$extractTitle=function($html) use ($decode) {
-    if (preg_match('/<title\b[^>]*>(.*?)<\/title>/is', (string)$html, $m)) {
-        return trim($decode(wp_strip_all_tags((string)$m[1])));
-    }
-    return "";
-};
-$extractMetaContent=function($html, $name) use ($decode) {
-    $name=preg_quote((string)$name, '/');
-    if (preg_match('/<meta\b(?=[^>]*\bname=["\']'.$name.'["\'])(?=[^>]*\bcontent=["\']([^"\']*)["\'])[^>]*>/is', (string)$html, $m)) {
-        return trim($decode((string)$m[1]));
-    }
-    return "";
-};
 foreach ($posts as $post) {
     $contentRaw=(string) $post->post_content;
     $contentHtml=$contentRaw;
@@ -208,25 +286,6 @@ foreach ($posts as $post) {
     $effectiveSeoTitle=$storedSeoTitle;
     $effectiveSeoDescription=$storedSeoDescription;
     $effectiveSeoSource=$storedSeoTitle !== "" || $storedSeoDescription !== "" ? "rank_math_post_meta" : "";
-    $servedTitle=null;
-    $servedDescription=null;
-    if ($fetchEffectiveFrontend && $effectiveFetchCount < $effectiveFrontendLimit && (string)$post->post_status === "publish") {
-        $permalink=(string) get_permalink($post);
-        if ($permalink !== "") {
-            $response=wp_safe_remote_get($permalink, ["timeout"=>$effectiveFrontendTimeout, "redirection"=>3, "sslverify"=>true, "limit_response_size"=>1048576, "headers"=>["Cache-Control"=>"no-cache"]]);
-            $effectiveFetchCount++;
-            if (!is_wp_error($response)) {
-                $html=(string) wp_remote_retrieve_body($response);
-                $htmlTitle=$extractTitle($html);
-                $htmlDescription=$extractMetaContent($html, "description");
-                $servedTitle=$htmlTitle;
-                $servedDescription=$htmlDescription;
-                if ($storedSeoTitle === "" && $htmlTitle !== "") $effectiveSeoTitle=$htmlTitle;
-                if ($storedSeoDescription === "" && $htmlDescription !== "") $effectiveSeoDescription=$htmlDescription;
-                if ($htmlTitle !== "" || $htmlDescription !== "") $effectiveSeoSource="frontend_html";
-            }
-        }
-    }
     $pages[]=[
         "id"=>(int) $post->ID,
         "post_type"=>(string) $post->post_type,
@@ -273,18 +332,17 @@ foreach ($posts as $post) {
         "rank_math_focus_keyword"=>$decode((string) get_post_meta($post->ID, "rank_math_focus_keyword", true)),
         "canonical_url"=>$decode((string) get_post_meta($post->ID, "rank_math_canonical_url", true)),
         "robots"=>$decode($robots),
-        "served_title"=>$servedTitle,
-        "served_description"=>$servedDescription,
-        "served_checked"=>$servedTitle !== null,
     ];
 }
-echo "HEXA_RANKMATH_INVENTORY:" . wp_json_encode(["success"=>true,"message"=>count($pages) . " page(s) loaded.","pages"=>$pages,"total"=>$total,"served_checked"=>$effectiveFetchCount]);
+echo "HEXA_RANKMATH_INVENTORY:" . wp_json_encode(["success"=>true,"message"=>count($pages) . " page(s) loaded.","pages"=>$pages,"total"=>$total]);
 PHP
         ]);
 
         $result = $this->wp->evaluatePhp($target, $php);
         if (!($result["success"] ?? false)) {
-            return ["success" => false, "message" => (string) ($result["message"] ?? "Rank Math inventory failed."), "pages" => []];
+            // The payload is printed first, so the cause is at the end of the output.
+            $tail = trim(substr((string) ($result["stdout"] ?? ""), -400));
+            return ["success" => false, "message" => "Rank Math inventory failed (exit " . ($result["exit_code"] ?? "?") . "): " . ($tail !== "" ? $tail : (string) ($result["message"] ?? "")), "pages" => []];
         }
 
         $payload = $this->decodeMarkedPayload((string) ($result["stdout"] ?? ""), "HEXA_RANKMATH_INVENTORY:");
