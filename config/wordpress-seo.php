@@ -21,6 +21,8 @@ return [
         // and cached pages are allowed (no cache bypass).
         "concurrency" => 2,
         "delay_ms" => 1000,
+        // Sitemap URLs outside the page list fetched per scan (evenly spread).
+        "sitemap_audit_sample" => 100,
         "max_body_bytes" => 10 * 1024 * 1024,
         "max_robots_body_bytes" => 1024 * 1024,
         "max_sitemap_body_bytes" => 25 * 1024 * 1024,

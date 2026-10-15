@@ -63,10 +63,21 @@ final class WordPressSiteIndexabilityService
             "expected_host" => $preferredHost,
         ]));
         $importantUrls = $this->importantUrls($state, $inventoryPages, (array) ($settings['important_urls'] ?? []));
-        $auditUrls = array_values(array_unique(array_merge(
-            (array) ($manifest['urls'] ?? []),
-            array_column($importantUrls, 'url')
+        // Every important URL and every page in the run's page list is fetched; the rest of the
+        // sitemap is fetched as an evenly spread sample so large sites finish
+        // at the throttled pace. All sitemap URLs are still counted.
+        $important = array_values(array_unique(array_merge(
+            array_column($importantUrls, 'url'),
+            array_values(array_filter(array_map(fn ($page): string => is_array($page) ? (string) ($page['url'] ?? '') : '', $inventoryPages)))
         )));
+        $importantSet = array_fill_keys(array_map(fn (string $url): string => $this->normalizeUrl($url), $important), true);
+        $others = array_values(array_filter((array) ($manifest['urls'] ?? []), fn ($url): bool => !isset($importantSet[$this->normalizeUrl((string) $url)])));
+        $sampleSize = max(0, (int) ($settings['sitemap_audit_sample'] ?? 100));
+        if (count($others) > $sampleSize) {
+            $step = count($others) / max(1, $sampleSize);
+            $others = $sampleSize === 0 ? [] : array_map(fn (int $i) => $others[(int) floor($i * $step)], range(0, $sampleSize - 1));
+        }
+        $auditUrls = array_values(array_unique(array_merge($important, $others)));
         $responses = $this->inspector->inspectMany($auditUrls, array_merge($httpOptions, [
             "concurrency" => (int) ($settings['concurrency'] ?? 2),
             "delay_ms" => (int) ($settings['delay_ms'] ?? 1000),
@@ -186,6 +197,8 @@ final class WordPressSiteIndexabilityService
                 "preferred_url" => $preferredUrl,
                 "sitemap_manifest_sha256" => (string) ($manifest['manifest_sha256'] ?? ''),
                 "sitemap_url_count" => (int) ($manifest['url_count'] ?? 0),
+                "sitemap_urls_fetched" => count($others),
+                "important_urls_fetched" => count($important),
                 "sitemap_manifest_complete" => (bool) ($manifest['complete'] ?? false),
                 "audited_url_count" => count($audits),
                 "url_audit_sha256" => hash('sha256', json_encode($auditProofRows, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)),
