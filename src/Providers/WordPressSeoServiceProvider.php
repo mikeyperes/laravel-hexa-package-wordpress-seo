@@ -3,6 +3,7 @@
 namespace hexa_package_wordpress_seo\Providers;
 
 use hexa_package_wordpress_seo\Console\WordPressImageMetaCommand;
+use hexa_package_wordpress_seo\Console\WordPressSeoConfigureCommand;
 use hexa_package_wordpress_seo\Console\WordPressSeoSiteCommand;
 use hexa_package_wordpress_seo\Services\Indexability\PublicUrlInspector;
 use hexa_package_wordpress_seo\Services\Indexability\RobotsTxtPolicy;
@@ -13,6 +14,7 @@ use hexa_package_wordpress_seo\Services\WordPressImageMetaService;
 use hexa_package_wordpress_seo\Services\WordPressSeoDiscoveryService;
 use hexa_package_wordpress_seo\Services\WordPressSeoInternalLinkService;
 use hexa_package_wordpress_seo\Services\WordPressSiteIndexabilityService;
+use hexa_package_wordpress_seo\Settings\WordPressSeoSettings;
 use Illuminate\Support\ServiceProvider;
 
 class WordPressSeoServiceProvider extends ServiceProvider
@@ -31,6 +33,7 @@ class WordPressSeoServiceProvider extends ServiceProvider
             SitemapManifestBuilder::class,
             WordPressSeoInternalLinkService::class,
             WordPressImageMetaService::class,
+            WordPressSeoSettings::class,
         ] as $service) {
             $this->app->singleton($service);
         }
@@ -44,6 +47,7 @@ class WordPressSeoServiceProvider extends ServiceProvider
             $this->commands([
                 WordPressSeoSiteCommand::class,
                 WordPressImageMetaCommand::class,
+                WordPressSeoConfigureCommand::class,
             ]);
         }
     }

@@ -63,6 +63,14 @@ prints JSON for one site, read-only:
 
 `php artisan wordpress-seo:image <domain> <attachment-id|image-url>` reads one image's alt text, title, caption, description, file name, size and format. Add `--alt= --title= --caption= --description=` to write them through WordPress's own functions, and `--post=<id>` to also refresh that image's alt inside one post's content. Service: `WordPressImageMetaService`.
 
+## Featured images folder
+
+`php artisan wordpress-seo:configure` shows the settings; `--featured-images-folder=<Drive folder URL>` saves the Google Drive parent folder (Hexa Core setting `wordpress_seo.featured_images_parent_url`). Each site's approved featured images go in a `<domain>` folder inside it, added one file at a time with `google-drive:create`. Share the parent folder with Code's Drive identities (`google-drive:access <folder>` checks them).
+
+## Version 0.5.0
+
+- `wordpress-seo:configure` and the featured images parent folder setting.
+
 ## Version 0.4.2
 
 - SEO-BUG-001: the page scanner is throttled to 2 requests at a time, 1 second apart, and no longer bypasses the cache; the `pages` view reads 100 served pages by default.
