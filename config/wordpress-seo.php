@@ -3,7 +3,8 @@
 return [
     "inventory" => [
         "post_types" => ["page", "post", "book", "organization"],
-        "statuses" => ["publish", "draft", "future", "private", "pending"],
+        // The SEO pass covers what visitors and Google can see: published only.
+        "statuses" => ["publish"],
         "per_page" => 200,
         "max_batches" => 200,
         // Published pages whose served HTML is read (title, description,

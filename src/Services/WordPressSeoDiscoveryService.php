@@ -58,6 +58,13 @@ class WordPressSeoDiscoveryService
 
     public function normalizeInstallTarget(WhmServer $server, array $install, string $defaultAuthor = ""): array
     {
+        // WP Toolkit reports the owning cPanel account and the absolute path;
+        // the target keeps the path relative to that account's home.
+        $cpanelUser = (string) ($install["cpanel_user"] ?? "");
+        $path = rtrim((string) ($install["path"] ?? ""), "/");
+        $home = "/home/" . $cpanelUser . "/";
+        $wpPath = ($cpanelUser !== "" && str_starts_with($path, $home)) ? substr($path, strlen($home)) : "public_html";
+
         return $this->wp->normalizeTarget([
             "mode" => "wptoolkit",
             "site_id" => null,
@@ -67,6 +74,8 @@ class WordPressSeoDiscoveryService
             "application_password" => "",
             "server" => $server,
             "install_id" => (int) ($install["id"] ?? 0),
+            "cpanel_user" => $cpanelUser,
+            "wp_path" => $wpPath,
             "default_author" => $defaultAuthor,
         ]);
     }

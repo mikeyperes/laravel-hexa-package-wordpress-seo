@@ -67,6 +67,11 @@ prints JSON for one site, read-only:
 
 `php artisan wordpress-seo:configure` shows the settings; `--featured-images-folder=<Drive folder URL>` saves the Google Drive parent folder (Hexa Core setting `wordpress_seo.featured_images_parent_url`). Each site's approved featured images go in a `<domain>` folder inside it, added one file at a time with `google-drive:create`. Share the parent folder with Code's Drive identities (`google-drive:access <folder>` checks them).
 
+## Version 0.5.1
+
+- The page list covers published pages only by default (drafts, scheduled, private and pending pages were included before).
+- A site found through WP Toolkit now keeps its cPanel account and WordPress folder, so login links and file paths resolve.
+
 ## Version 0.5.0
 
 - `wordpress-seo:configure` and the featured images parent folder setting.
