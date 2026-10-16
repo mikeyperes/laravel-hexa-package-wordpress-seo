@@ -24,6 +24,10 @@ final class RobotsTxtPolicy
         };
 
         foreach (preg_split('/\R/', $contents) ?: [] as $line) {
+            // A comment-only line belongs to the group around it (RFC 9309).
+            if (str_starts_with(ltrim((string) $line), '#')) {
+                continue;
+            }
             $line = trim((string) preg_replace('/\s*#.*$/', '', (string) $line));
             if ($line === '') {
                 if ($rules !== []) {

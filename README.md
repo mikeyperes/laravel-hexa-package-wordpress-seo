@@ -59,6 +59,33 @@ prints JSON for one site, read-only:
 - `links --page=<id>` — internal-link suggestions for one page and its dead
   links (status 0 or 400+).
 
+## llms.txt
+
+`php artisan wordpress-seo:llms-txt <domain> [status|apply|off]` runs Rank
+Math's built-in llms.txt. `apply` switches the module on and fills it in: the
+content types and categories the Rank Math sitemap includes (or
+`--post-types=` / `--taxonomies=`), `llms_txt.limit` links per type,
+`--site-name=` (Rank Math's site name, the file's heading and its structured
+data name), `--summary=` (the line under the heading) and `--extra-file=`. It
+clears LiteSpeed's copy of `/llms.txt` and checks the served file; `status`
+lists what is still missing (placeholder site name, no summary, file not
+served, an `llms.txt` file on the server overriding Rank Math).
+
+## robots.txt
+
+`php artisan wordpress-seo:robots-txt <domain> [status|plan|apply] [--block=<path>]... [--unblock=<path>]...`
+keeps robots.txt in Rank Math's robots.txt setting. The built file names every
+crawler in `robots_txt.ai_crawlers` beside `*` so AI search crawlers are
+allowed on purpose and follow the same rules, adds `robots_txt.base_rules`,
+the pages blocked on request (read from the saved rules, never a cached copy)
+and Rank Math's sitemap line, which Rank Math's custom text would otherwise
+drop. `apply` removes an old `robots.txt` file on the server that overrides
+Rank Math, clears LiteSpeed's copy and checks what the site serves; a cache in
+front of the site, such as Cloudflare, is reported separately. `status` also
+fetches the homepage as each AI crawler in `robots_txt.ai_fetch_agents` to
+catch a firewall block. `apply` refuses a site set to hide itself from search
+engines.
+
 ## Image SEO fields
 
 `php artisan wordpress-seo:image <domain> <attachment-id|image-url>` reads one image's alt text, title, caption, description, file name, size and format. Add `--alt= --title= --caption= --description=` to write them through WordPress's own functions, and `--post=<id>` to also refresh that image's alt inside one post's content. Service: `WordPressImageMetaService`.
@@ -66,6 +93,12 @@ prints JSON for one site, read-only:
 ## Featured images folder
 
 `php artisan wordpress-seo:configure` shows the settings; `--featured-images-folder=<Drive folder URL>` saves the Google Drive parent folder (Hexa Core setting `wordpress_seo.featured_images_parent_url`). Each site's approved featured images go in a `<domain>` folder inside it, added one file at a time with `google-drive:create`. Share the parent folder with Code's Drive identities (`google-drive:access <folder>` checks them).
+
+## Version 0.7.0
+
+- `wordpress-seo:llms-txt`: switch on, fill in and check Rank Math's llms.txt.
+- `wordpress-seo:robots-txt`: build robots.txt in Rank Math with AI crawlers allowed, block and unblock pages, take over from an old server file.
+- The robots.txt reader no longer ends a rule group at a comment line.
 
 ## Version 0.5.1
 

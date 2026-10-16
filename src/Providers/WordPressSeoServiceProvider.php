@@ -5,13 +5,17 @@ namespace hexa_package_wordpress_seo\Providers;
 use hexa_package_wordpress_seo\Console\WordPressImageMetaCommand;
 use hexa_package_wordpress_seo\Console\WordPressSeoConfigureCommand;
 use hexa_package_wordpress_seo\Console\WordPressSeoFeaturedFolderCommand;
+use hexa_package_wordpress_seo\Console\WordPressSeoLlmsTxtCommand;
+use hexa_package_wordpress_seo\Console\WordPressSeoRobotsTxtCommand;
 use hexa_package_wordpress_seo\Console\WordPressSeoSiteCommand;
 use hexa_package_wordpress_seo\Services\FeaturedImageFolders;
 use hexa_package_wordpress_seo\Services\Indexability\PublicUrlInspector;
 use hexa_package_wordpress_seo\Services\Indexability\RobotsTxtPolicy;
 use hexa_package_wordpress_seo\Services\Indexability\SitemapManifestBuilder;
 use hexa_package_wordpress_seo\Services\PageStructureCheck;
+use hexa_package_wordpress_seo\Services\RankMathLlmsTxtService;
 use hexa_package_wordpress_seo\Services\RankMathPageService;
+use hexa_package_wordpress_seo\Services\RobotsTxtService;
 use hexa_package_wordpress_seo\Services\WordPressImageMetaService;
 use hexa_package_wordpress_seo\Services\WordPressSeoDiscoveryService;
 use hexa_package_wordpress_seo\Services\WordPressSeoInternalLinkService;
@@ -28,6 +32,8 @@ class WordPressSeoServiceProvider extends ServiceProvider
         foreach ([
             WordPressSeoDiscoveryService::class,
             RankMathPageService::class,
+            RankMathLlmsTxtService::class,
+            RobotsTxtService::class,
             PageStructureCheck::class,
             WordPressSiteIndexabilityService::class,
             PublicUrlInspector::class,
@@ -54,6 +60,8 @@ class WordPressSeoServiceProvider extends ServiceProvider
                 WordPressImageMetaCommand::class,
                 WordPressSeoConfigureCommand::class,
                 WordPressSeoFeaturedFolderCommand::class,
+                WordPressSeoLlmsTxtCommand::class,
+                WordPressSeoRobotsTxtCommand::class,
             ]);
         }
 
