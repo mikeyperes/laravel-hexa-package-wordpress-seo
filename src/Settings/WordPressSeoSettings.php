@@ -3,10 +3,12 @@
 namespace hexa_package_wordpress_seo\Settings;
 
 use hexa_core\Models\Setting;
+use hexa_package_google_drive\Services\GoogleDriveService;
 
 /**
- * Site-level settings, stored through Hexa Core's Setting model.
- * Google Drive credentials stay with the Google Drive package.
+ * Site-level settings, stored through Hexa Core's Setting model and edited on
+ * the WordPress SEO settings page. Google Drive credentials stay with the
+ * Google Drive package.
  */
 final class WordPressSeoSettings
 {
@@ -18,8 +20,12 @@ final class WordPressSeoSettings
         return trim((string) Setting::getValue(self::PREFIX.'featured_images_parent_url', ''));
     }
 
+    /** Stored in the Drive package's canonical form ("" clears it). */
     public function setFeaturedImagesParentUrl(string $url): void
     {
-        Setting::setValue(self::PREFIX.'featured_images_parent_url', trim($url));
+        $url = class_exists(GoogleDriveService::class)
+            ? app(GoogleDriveService::class)->canonicalFolderUrl($url)
+            : trim($url);
+        Setting::setValue(self::PREFIX.'featured_images_parent_url', $url, 'wordpress-seo');
     }
 }
