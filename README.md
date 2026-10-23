@@ -10,6 +10,7 @@ Every call reads the site directly; nothing is stored.
 - `PageStructureCheck::check($page, $siteSlugs)`: the H1, heading-order and slug checks shown on each `pages` line. `writePage($target, $postId, [...])` writes one page's Rank Math title and description; `inspect($target)` reports the Rank Math plugins.
 - `WordPressSiteIndexabilityService::scan($target, $pages)`: the indexability scan below.
 - `WordPressSeoInternalLinkService::analyze($page, $sitePages)`: one page's current internal links and suggestions.
+- `PageLinkScanner::scan($url, $html = null, $checkStatus = true)`: every link on one page (live page or saved HTML draft), sorted into dead, empty, jump links to nothing, buttons and clickable-looking text that go nowhere, plain-text web addresses, plus the site's sitemap page list. `analyze($url, $html)` is the same without any network calls.
 - `WordPressImageMetaService`: one image's alt text, title, caption, description, file name, size and format.
 
 ## Site-level indexability
@@ -93,6 +94,21 @@ engines.
 ## Featured images folder
 
 `php artisan wordpress-seo:configure` shows the settings; `--featured-images-folder=<Drive folder URL>` saves the Google Drive parent folder (Hexa Core setting `wordpress_seo.featured_images_parent_url`). Each site's approved featured images go in a `<domain>` folder inside it, added one file at a time with `google-drive:create`. Share the parent folder with Code's Drive identities (`google-drive:access <folder>` checks them).
+
+`php artisan wordpress-seo:page-links <page URL> [--html=<file>] [--no-status]`
+prints JSON for one page, read-only (used by the page-link-integrity skill):
+`dead_links` (internal pages that answer 404, another error or nothing, checked
+at most 2 at a time and 1 second apart), `dummy_links` (no address, `#` or
+`javascript:`), `missing_jump_targets` (`#name` links with no matching spot),
+`buttons_to_check` (buttons with no link, click handler, controlled element or
+script data), `clickable_looking_not_linked`, `addresses_not_linked`,
+`internal_pages` and `site_pages`. `--html` scans a rendered or draft page saved
+to a file; `--no-status` skips the dead-link checks. Works on any website, not
+only WordPress.
+
+## Version 0.8.0
+
+- `wordpress-seo:page-links` and `PageLinkScanner`: the one-page link scan, moved here from the page-link-integrity skill's own script. Named jump spots (`<a name>` with no address) are no longer reported as empty links.
 
 ## Version 0.7.0
 

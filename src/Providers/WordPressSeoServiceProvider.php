@@ -8,6 +8,7 @@ use hexa_package_wordpress_seo\Console\WordPressSeoFeaturedFolderCommand;
 use hexa_package_wordpress_seo\Console\WordPressSeoLlmsTxtCommand;
 use hexa_package_wordpress_seo\Console\WordPressSeoRobotsTxtCommand;
 use hexa_package_wordpress_seo\Console\WordPressSeoSiteCommand;
+use hexa_package_wordpress_seo\Console\WordPressSeoPageLinksCommand;
 use hexa_package_wordpress_seo\Services\FeaturedImageFolders;
 use hexa_package_wordpress_seo\Services\Indexability\PublicUrlInspector;
 use hexa_package_wordpress_seo\Services\Indexability\RobotsTxtPolicy;
@@ -57,6 +58,7 @@ class WordPressSeoServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 WordPressSeoSiteCommand::class,
+                WordPressSeoPageLinksCommand::class,
                 WordPressImageMetaCommand::class,
                 WordPressSeoConfigureCommand::class,
                 WordPressSeoFeaturedFolderCommand::class,
